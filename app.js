@@ -451,13 +451,35 @@ async function startScanner() {
     const ZXing = window.ZXingBrowser;
     if (!ZXing) { toast('Scanner library not loaded', 'error'); return; }
 
-    // listVideoInputDevices is a static method on BrowserCodeReader (base class)
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    const deviceId = devices.find(d => /back|rear|environment/i.test(d.label))?.deviceId
-                     || devices[0]?.deviceId
-                     || undefined;
+    // Use hints to prioritise EAN-13 (ISBN barcodes) and EAN-8
+    // BarcodeFormat and DecodeHintType come from @zxing/library (window.ZXing)
+    const ZXingLib = window.ZXing || {};
+    const BarcodeFormat  = ZXingLib.BarcodeFormat  || {};
+    const DecodeHintType = ZXingLib.DecodeHintType || {};
+    const hints = new Map();
+    const formats = [
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.UPC_A,
+    ].filter(f => f !== undefined);
+    if (formats.length && DecodeHintType.POSSIBLE_FORMATS !== undefined) {
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+    }
+    if (DecodeHintType.TRY_HARDER !== undefined) {
+      hints.set(DecodeHintType.TRY_HARDER, true);
+    }
 
-    codeReader = new ZXing.BrowserMultiFormatReader();
+    codeReader = new ZXing.BrowserMultiFormatReader(hints.size ? hints : undefined);
+
+    // Use facingMode: environment to prefer rear camera on mobile
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1280 },
+        height: { ideal: 720 },
+      }
+    };
 
     placeholder.classList.add('hidden');
     wrap.classList.remove('hidden');
@@ -466,8 +488,8 @@ async function startScanner() {
     startBtn.classList.remove('btn-primary');
     startBtn.classList.add('btn-danger');
 
-    // decodeFromVideoDevice returns a controls object with a stop() method
-    scanControls = await codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+    // decodeFromConstraints returns a controls object with stop()
+    scanControls = await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
       if (!result) return;
       const text = result.getText();
       if (/^\d{9}[\dX]$|^\d{13}$/.test(text)) {

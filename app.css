@@ -465,16 +465,28 @@ h2 {
 /* Setup steps */
 .setup-steps { counter-reset: step; list-style: none; }
 .setup-steps li {
-  counter-increment: step; display: flex; gap: .75rem;
+  counter-increment: step; display: inline-block; gap: .75rem;
   padding: .6rem 0; font-size: .875rem; color: var(--fg);
 }
 .setup-steps li::before {
-  content: counter(step);
-  min-width: 24px; height: 24px; border-radius: 50%;
-  background: var(--primary); color: var(--primary-fg);
-  font-size: .75rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 1px;
+    content: counter(step);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--primary-fg);
+    font-size: .75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: -3px;
+    display: block;
+    float: left;
+    text-align: center;
+    line-height: 24px;
+    margin-right: 0.5rem;
 }
 
 /* ── Footer ── */

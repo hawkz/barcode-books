@@ -29,6 +29,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Lora:wght@600;700&display=swap" rel="stylesheet" />
 
+    <!-- Splash screen: shown instantly while React hydrates -->
     <style>
       #splash {
         position: fixed;
@@ -81,8 +82,9 @@
     <link rel="stylesheet" crossorigin href="assets/index.css">
   </head>
   <body>
+    <!-- Splash screen (hidden once React mounts) -->
     <div id="splash" role="status" aria-label="Loading ISBN Scanner">
-      <img src="/icon-192.png" alt="ISBN Scanner icon" />
+      <img src="icon-192.png" alt="ISBN Scanner icon" />
       <p>ISBN Scanner</p>
       <p id="splash-sub">Loading your library…</p>
       <div id="splash-spinner"></div>
@@ -90,6 +92,7 @@
 
     <div id="root"></div>
 
+    <!-- Register service worker -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

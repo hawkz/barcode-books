@@ -1,64 +1,16 @@
 {
-  "name": "ISBN Barcode Scanner",
+  "name": "ISBN Scanner",
   "short_name": "ISBN Scanner",
-  "description": "Scan book barcodes, look up book info, and save your library to Google Sheets.",
-  "start_url": "/",
+  "description": "Scan book barcodes and save to Google Sheets",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#1E3A2F",
-  "theme_color": "#1E3A2F",
-  "orientation": "portrait-primary",
-  "categories": ["books", "utilities", "productivity"],
+  "orientation": "portrait",
+  "theme_color": "#2D6A4F",
+  "background_color": "#FAF8F5",
   "icons": [
-    {
-      "src": "/favicon-16x16.png",
-      "sizes": "16x16",
-      "type": "image/png"
-    },
-    {
-      "src": "/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-maskable-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Scan a Book",
-      "short_name": "Scan",
-      "description": "Open the barcode scanner",
-      "url": "/?view=scan",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "My Bookshelf",
-      "short_name": "Bookshelf",
-      "description": "View your scanned books",
-      "url": "/?view=shelf",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    }
+    { "src": "icon-192.png",          "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png",          "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

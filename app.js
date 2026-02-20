@@ -438,6 +438,8 @@ function positionTooltip(e) {
 
 // ── Scanner ───────────────────────────────────────────────────────────────────
 
+let scanControls = null;
+
 async function startScanner() {
   if (scannerRunning) return;
   const wrap = $('scanner-wrap');
@@ -448,9 +450,14 @@ async function startScanner() {
   try {
     const ZXing = window.ZXingBrowser;
     if (!ZXing) { toast('Scanner library not loaded', 'error'); return; }
+
+    // listVideoInputDevices is a static method on BrowserCodeReader (base class)
+    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    const deviceId = devices.find(d => /back|rear|environment/i.test(d.label))?.deviceId
+                     || devices[0]?.deviceId
+                     || undefined;
+
     codeReader = new ZXing.BrowserMultiFormatReader();
-    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-    const deviceId = devices.find(d => /back|rear|environment/i.test(d.label))?.deviceId || devices[0]?.deviceId;
 
     placeholder.classList.add('hidden');
     wrap.classList.remove('hidden');
@@ -459,7 +466,8 @@ async function startScanner() {
     startBtn.classList.remove('btn-primary');
     startBtn.classList.add('btn-danger');
 
-    await codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+    // decodeFromVideoDevice returns a controls object with a stop() method
+    scanControls = await codeReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
       if (!result) return;
       const text = result.getText();
       if (/^\d{9}[\dX]$|^\d{13}$/.test(text)) {
@@ -474,6 +482,7 @@ async function startScanner() {
 }
 
 function stopScanner() {
+  if (scanControls) { try { scanControls.stop(); } catch {} scanControls = null; }
   if (codeReader) { try { codeReader.reset(); } catch {} codeReader = null; }
   scannerRunning = false;
   const startBtn = $('scanner-start-btn');

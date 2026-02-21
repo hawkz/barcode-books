@@ -439,6 +439,8 @@ function positionTooltip(e) {
 // ── Scanner ───────────────────────────────────────────────────────────────────
 
 let scanControls = null;
+let lastScanTime = 0;
+const SCAN_DEBOUNCE_MS = 500; // Prevent duplicate scans too quickly
 
 async function startScanner() {
   if (scannerRunning) return;
@@ -451,7 +453,7 @@ async function startScanner() {
     const ZXing = window.ZXingBrowser;
     if (!ZXing) { toast('Scanner library not loaded', 'error'); return; }
 
-    // Use hints to prioritise EAN-13 (ISBN barcodes) and EAN-8
+    // Use hints to prioritise EAN-13 (ISBN barcodes) and expand supported formats
     // BarcodeFormat and DecodeHintType come from @zxing/library (window.ZXing)
     const ZXingLib = window.ZXing || {};
     const BarcodeFormat  = ZXingLib.BarcodeFormat  || {};
@@ -460,8 +462,11 @@ async function startScanner() {
     const formats = [
       BarcodeFormat.EAN_13,
       BarcodeFormat.EAN_8,
-      BarcodeFormat.CODE_128,
       BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.ITF,
     ].filter(f => f !== undefined);
     if (formats.length && DecodeHintType.POSSIBLE_FORMATS !== undefined) {
       hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
@@ -472,7 +477,7 @@ async function startScanner() {
 
     codeReader = new ZXing.BrowserMultiFormatReader(hints.size ? hints : undefined);
 
-    // Use facingMode: environment to prefer rear camera on mobile
+    // Use flexible video constraints - prioritize rear camera but allow fallback
     const constraints = {
       video: {
         facingMode: { ideal: 'environment' },
@@ -491,9 +496,17 @@ async function startScanner() {
     // decodeFromConstraints returns a controls object with stop()
     scanControls = await codeReader.decodeFromConstraints(constraints, video, (result, err) => {
       if (!result) return;
+
+      // Apply debouncing to prevent rapid repeated scans
+      const now = Date.now();
+      if (now - lastScanTime < SCAN_DEBOUNCE_MS) return;
+      lastScanTime = now;
+
       const text = result.getText();
-      if (/^\d{9}[\dX]$|^\d{13}$/.test(text)) {
-        handleISBN(text);
+      // More lenient ISBN validation - accept 10/13 digits, strip common formatting
+      const cleanText = text.replace(/[\s\-]/g, '');
+      if (/^\d{9}[\dX]$|^\d{13}$/.test(cleanText)) {
+        handleISBN(cleanText);
       }
     });
   } catch (err) {

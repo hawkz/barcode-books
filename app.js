@@ -441,6 +441,8 @@ function positionTooltip(e) {
 let scanControls = null;
 let lastScanTime = 0;
 const SCAN_DEBOUNCE_MS = 500; // Prevent duplicate scans too quickly
+let torchSupported = false;
+let torchEnabled = false;
 
 async function startScanner() {
   if (scannerRunning) return;
@@ -483,6 +485,10 @@ async function startScanner() {
         facingMode: { ideal: 'environment' },
         width:  { ideal: 1280 },
         height: { ideal: 720 },
+        // Request autofocus for better barcode scanning
+        focusMode: { ideal: 'continuous' },
+        // Request torch capability (we'll check if supported)
+        advanced: [{ torch: true }]
       }
     };
 
@@ -506,13 +512,103 @@ async function startScanner() {
       // More lenient ISBN validation - accept 10/13 digits, strip common formatting
       const cleanText = text.replace(/[\s\-]/g, '');
       if (/^\d{9}[\dX]$|^\d{13}$/.test(cleanText)) {
+        // Haptic feedback on successful scan (mobile)
+        if (navigator.vibrate) {
+          navigator.vibrate(200);
+        }
         handleISBN(cleanText);
       }
     });
+
+    // Check for torch support after video stream starts
+    await checkTorchSupport(video);
   } catch (err) {
-    toast('Camera access denied or unavailable', 'error');
-    console.error(err);
+    console.error('Scanner error:', err);
+
+    // Provide specific error messages based on error type
+    let errorMsg = 'Camera access denied or unavailable';
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      errorMsg = 'Camera permission denied. Please enable camera access in your browser settings.';
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      errorMsg = 'No camera found. Please connect a camera and try again.';
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      errorMsg = 'Camera is busy or in use by another application. Please close other camera apps.';
+    } else if (err.name === 'OverconstrainedError') {
+      errorMsg = 'Camera does not meet requirements. Trying again with relaxed constraints...';
+      // Retry with more relaxed constraints after a brief delay
+      setTimeout(async () => {
+        try {
+          const relaxedConstraints = { video: { facingMode: 'environment' } };
+          scanControls = await codeReader.decodeFromConstraints(relaxedConstraints, video, (result, err) => {
+            if (!result) return;
+            const now = Date.now();
+            if (now - lastScanTime < SCAN_DEBOUNCE_MS) return;
+            lastScanTime = now;
+            const text = result.getText();
+            const cleanText = text.replace(/[\s\-]/g, '');
+            if (/^\d{9}[\dX]$|^\d{13}$/.test(cleanText)) {
+              if (navigator.vibrate) navigator.vibrate(200);
+              handleISBN(cleanText);
+            }
+          });
+          await checkTorchSupport(video);
+          toast('Scanner started with basic settings', 'ok');
+        } catch (retryErr) {
+          console.error('Retry failed:', retryErr);
+          stopScanner();
+        }
+      }, 1500);
+      return;
+    }
+
+    toast(errorMsg, 'error');
     stopScanner();
+  }
+}
+
+async function checkTorchSupport(video) {
+  try {
+    const stream = video.srcObject;
+    if (!stream) return;
+
+    const track = stream.getVideoTracks()[0];
+    const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+
+    torchSupported = !!capabilities.torch;
+    const torchBtn = $('torch-btn');
+    if (torchBtn) {
+      torchBtn.classList.toggle('hidden', !torchSupported);
+    }
+  } catch (e) {
+    console.log('Torch check failed:', e);
+  }
+}
+
+async function toggleTorch() {
+  if (!torchSupported || !scanControls) return;
+
+  try {
+    const video = $('scanner-video');
+    const stream = video.srcObject;
+    if (!stream) return;
+
+    const track = stream.getVideoTracks()[0];
+    torchEnabled = !torchEnabled;
+
+    await track.applyConstraints({
+      advanced: [{ torch: torchEnabled }]
+    });
+
+    const torchBtn = $('torch-btn');
+    if (torchBtn) {
+      torchBtn.classList.toggle('active', torchEnabled);
+      torchBtn.innerHTML = torchEnabled ? svgFlashlight(20) : svgFlashlightOff(20);
+    }
+
+    toast(torchEnabled ? 'Flash on' : 'Flash off', 'ok');
+  } catch (e) {
+    toast('Flash control unavailable', 'error');
+    console.error('Torch toggle failed:', e);
   }
 }
 
@@ -520,11 +616,18 @@ function stopScanner() {
   if (scanControls) { try { scanControls.stop(); } catch {} scanControls = null; }
   if (codeReader) { try { codeReader.reset(); } catch {} codeReader = null; }
   scannerRunning = false;
+  torchEnabled = false;
+  torchSupported = false;
   const startBtn = $('scanner-start-btn');
   if (startBtn) {
     startBtn.innerHTML = `${svgCamera(16)} Start Scanner`;
     startBtn.classList.add('btn-primary');
     startBtn.classList.remove('btn-danger');
+  }
+  const torchBtn = $('torch-btn');
+  if (torchBtn) {
+    torchBtn.classList.add('hidden');
+    torchBtn.classList.remove('active');
   }
   $('scanner-wrap')?.classList.add('hidden');
   $('scanner-placeholder')?.classList.remove('hidden');
@@ -684,6 +787,8 @@ function svgAlert(s)     { return `<svg width="${s}" height="${s}" viewBox="0 0 
 function svgOk(s)        { return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`; }
 function svgCart(s)      { return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`; }
 function svgCopy(s)      { return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`; }
+function svgFlashlight(s)   { return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><line x1="6" y1="6" x2="18" y2="6"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg>`; }
+function svgFlashlightOff(s){ return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4"/><path d="M7 2h11v4c0 2-2 2-2 4v1"/><line x1="11" y1="6" x2="18" y2="6"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`; }
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -714,6 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('icon-copy-code').innerHTML  = svgCopy(14);
   $('icon-external').innerHTML   = svgExternal(14);
   $('scanner-placeholder-icon').innerHTML = svgCamera(40);
+  $('icon-torch').innerHTML      = svgFlashlightOff(20);
 
   // Create tooltip element
   tooltip = document.createElement('div');

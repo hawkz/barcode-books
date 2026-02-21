@@ -84,10 +84,15 @@
       <section aria-labelledby="scanner-heading">
         <div class="scanner-controls">
           <h2 id="scanner-heading">Barcode Scanner</h2>
-          <button id="scanner-start-btn" class="btn btn-primary">
-            <span id="icon-camera"></span>
-            Start Scanner
-          </button>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <button id="scanner-start-btn" class="btn btn-primary" style="flex:1;">
+              <span id="icon-camera"></span>
+              Start Scanner
+            </button>
+            <button id="torch-btn" class="btn btn-secondary hidden" onclick="toggleTorch()" style="padding:10px 16px;" title="Toggle flashlight">
+              <span id="icon-torch"></span>
+            </button>
+          </div>
         </div>
 
         <!-- Camera feed (hidden until started) -->
@@ -96,7 +101,14 @@
           <div class="scanner-overlay">
             <div class="scan-frame">
               <div class="scan-line"></div>
+              <div class="scan-target">
+                <div class="corner top-left"></div>
+                <div class="corner top-right"></div>
+                <div class="corner bottom-left"></div>
+                <div class="corner bottom-right"></div>
+              </div>
             </div>
+            <div class="scan-hint">Align barcode within the frame</div>
           </div>
           <div class="flash-overlay" id="flash-overlay"></div>
         </div>
@@ -108,7 +120,15 @@
         </div>
 
         <p id="scan-status" class="scanner-hint hidden"></p>
-        <p class="scanner-hint">Point your camera at a book's barcode. ISBN-13 and ISBN-10 supported.</p>
+        <div class="scanner-tips">
+          <p class="scanner-hint"><strong>Tips for better scanning:</strong></p>
+          <ul class="scanner-hint-list">
+            <li>Hold the book steady within the frame</li>
+            <li>Ensure good lighting (use flashlight button in low light)</li>
+            <li>Keep the barcode flat and parallel to the camera</li>
+            <li>Move closer or further away if not scanning</li>
+          </ul>
+        </div>
       </section>
 
       <section aria-labelledby="manual-heading">
